@@ -1657,3 +1657,55 @@ async def test_change_entity_id(
     assert len(result) == 2
     assert len(ent.added_calls) == 3
     assert len(ent.remove_calls) == 2
+
+
+async def test_update_capabilities(
+    hass: HomeAssistant,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test calling async_update_capabilities."""
+    platform = MockEntityPlatform(hass)
+
+    entity = MockEntity(unique_id="qwer")
+    await platform.async_add_entities([entity])
+
+    entry = entity_registry.async_get(entity.entity_id)
+    assert entry.capabilities is None
+    assert entry.device_class is None
+    assert entry.supported_features == 0
+
+    entity._values["capability_attributes"] = {"bla": "blu"}
+    entity._values["device_class"] = "some_class"
+    entity._values["supported_features"] = 127
+    entity.async_write_ha_state()
+    entry = entity_registry.async_get(entity.entity_id)
+    assert entry.capabilities == {"bla": "blu"}
+    assert entry.original_device_class == "some_class"
+    assert entry.supported_features == 127
+
+    entity._values["capability_attributes"] = None
+    entity._values["device_class"] = None
+    entity._values["supported_features"] = None
+    entity.async_write_ha_state()
+    entry = entity_registry.async_get(entity.entity_id)
+    assert entry.capabilities is None
+    assert entry.original_device_class is None
+    assert entry.supported_features == 0
+
+
+async def test_update_capabilities_no_unique_id(
+    hass: HomeAssistant,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test calling async_update_capabilities."""
+    platform = MockEntityPlatform(hass)
+
+    entity = MockEntity()
+    await platform.async_add_entities([entity])
+
+    assert entity_registry.async_get(entity.entity_id) is None
+
+    entity._values["capability_attributes"] = {"bla": "blu"}
+    entity._values["supported_features"] = 127
+    entity.async_write_ha_state()
+    assert entity_registry.async_get(entity.entity_id) is None
